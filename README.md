@@ -2,11 +2,14 @@
 
 这是可连续操作的移动 App 交互原型，包含首页、会话、任务、记忆、我的五个主入口。完整源码、素材、画板与运行说明都保存在这个仓库中。
 
-- [在线体验完整 App](https://oops-app-demo-hyl-20261008.giftedprofessor516.chatgpt.site/)
+- **[统一体验中心：App / 真实页面 / 交互画板](https://oops-app-demo-hyl-20261008.giftedprofessor516.chatgpt.site/showcase.html)**（推荐分享此链接）
+- [直接体验完整 App](https://oops-app-demo-hyl-20261008.giftedprofessor516.chatgpt.site/)
 - [在线查看记录体验改进画板](https://oops-app-demo-hyl-20261008.giftedprofessor516.chatgpt.site/record-improved.html)
 - [在线查看新版真实页面总览（149个页面与状态）](https://oops-app-demo-hyl-20261008.giftedprofessor516.chatgpt.site/board.html)
 
 新版真实总览收录 **149 个实际页面与状态**，全部由当前 App 重新截图；[172 项功能交互画板](https://oops-app-demo-hyl-20261008.giftedprofessor516.chatgpt.site/interactive-board.html) 保留原 131 项编号，新增 41 项 P0 页面与状态，并连接当前入口。合并页面明确标注实际入口，尚未接通的旧细分能力也在页面说明中标明。两份画板可搜索、分组、缩放、查看实拍或打开对应可操作 App，使用独立示例，不读取或覆盖已保存数据。
+
+统一体验中心在同页切换三个模式，保留 App 当前页面与草稿、画板筛选和滚动位置。从画板进入对应 App 示例后，可返回原来的自由体验；示例与已保存个人数据隔离。支持分享当前模式、页面和示例场景，顶部也可直接进入原飞书意见表。旧三个链接继续可用。
 
 ## 2026-10-09 P0 前端补齐
 
