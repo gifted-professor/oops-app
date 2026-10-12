@@ -1992,6 +1992,17 @@ class Handler(BaseHTTPRequestHandler):
                 value = self.backend.recording_call("chunk", m.group(1), name=m.group(2), offset=offset,
                                                     data=self.rfile.read(size), sha=self.headers.get("X-Content-SHA256", ""))
                 summary = f"{m.group(2)} received={value['received']}"
+            elif method == "GET" and re.fullmatch(r"/v1/meetings/[^/]+/minutes", urlsplit(self.path).path):
+                sid = urlsplit(self.path).path.split("/")[3]
+                try:
+                    row = self.backend.meetings.load(sid)
+                except FileNotFoundError:
+                    raise ApiError(404, 'NOT_FOUND', '会议不存在或已过保留期') from None
+                except ValueError as error:
+                    raise ApiError(400, 'BAD_REQUEST', str(error)) from None
+                feishu = getattr(self.backend, "feishu", None)
+                value = dict(session_id=sid, **(feishu.minutes_view(row) if feishu else dict(status="unavailable", reason="bot_off")))
+                summary = f"minutes {value['status']}"
             elif method == "GET" and self.path.startswith('/v1/meetings/'):
                 try:
                     value = self.backend.meetings.load(self.path.rsplit('/', 1)[1])

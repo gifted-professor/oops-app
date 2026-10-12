@@ -279,6 +279,7 @@ pyannote 3.0 局部编号不作为身份，不跨不连续发言共用声纹判�
 | POST /v1/meetings/sync | {session_id,started_at,time_zone,ended_at?,agenda?,utterances:[最多500句],notices:[最多100条]} → {session_id,utterance_count,notice_count} |
 | GET /v1/meetings?limit=30 | limit 1–100 → {count,items:[session_id,started_at,ended_at,goal,utterance_count,digest_counts]} |
 | GET /v1/meetings/{id} | 元数据、按时间排列的 utterances、notices、digest 四类原话、按 operations.request.session_id 关联的 tasks |
+| GET /v1/meetings/{id}/minutes | {session_id,status,reason?,minutes?,sources?,doc_url?}；飞书机器人写好的 AI 纪要，只读，见下 |
 | POST /v1/meetings/search | {query:1–500字} → {items:[id,text,start_ms,end_ms,speaker,tag,session_id,started_at,prob],engine} |
 | POST /v1/meetings/delete | {session_id,confirm:true} → {deleted:true}；重复删除幂等，迟到同步返回 400 |
 | POST /v1/meetings/rename | {session_id,title:0–40字} → {session_id,title,title_source}；空字符串恢复自动名称 |
@@ -286,6 +287,13 @@ pyannote 3.0 局部编号不作为身份，不跨不连续发言共用声纹判�
 | GET /v1/projects | {items:[{name,meeting_count,confirmed_decisions,last_started_at}]}，最近有会的在前 |
 | GET /v1/projects/{名称，URL 编码} | {name,meetings,decisions:[已确认的决定/约束，带 session_id、started_at、meeting_title、speaker],unreviewed_decisions,tasks}；tasks 同 `/v1/tasks` 的条目，限这个项目的会议 |
 | POST /v1/meetings/review | {session_id,utterance_id,speaker?,verdict?,owner?,by?} → {session_id,utterance_id,review}；人工核对，见下 |
+
+**AI 纪要（2026-10-11）**：`GET /v1/meetings/{id}/minutes` 返回机器人会后写的纪要，给 App 和网页原型用。只读已存结果，不会为此调用模型。`status`：
+- `ready`：`minutes` 为 `{version,substantive,overview,decisions:[{text,ids}],actions:[{owner,task,due,ids}],topics:[{topic,points}],open_questions:[{question,quote,id}],follow_ups:[{title,start,minutes,attendees,quote}]}`，每条都回指真实存在的句子；`sources` 是决定、待办、待查问题引用到的句子 `{id:{text,start_ms,end_ms,speaker}}`（说话人以人工核对为准，之后被删的句子不出现）；`doc_url` 是飞书纪要文档，没发文档时为 null。`substantive:false` 表示会议没有值得整理的内容（不足 5 句也是这样）。
+- `pending`：`reason` 为 `in_progress`（会议未结束）或 `writing`（已结束，机器人会在结束 90 秒后写，失败按 2、4、8… 分钟重试）。
+- `unavailable`：`reason` 为 `bot_off`（服务器未开 `OOPS_FEISHU_BOT=1`）、`before_bot`（会议在机器人启用前结束，不补写）或 `failed`（连续 6 次失败）。
+
+会议不存在或已删除返回 404，`id` 不合法返回 400；凭据要求同其他会议接口。
 
 **人工核对（2026-10-09）**：`speaker` ∈ 团队成员或 `other`/`multi`/`unclear`，`owner` ∈ 团队成员，`verdict` ∈ `confirmed`/`rejected`；只改请求里出现的字段，传 `null` 清除该字段，全部清空则删除这条核对。核对单独存在会议文件的 `reviews` 里，同步永远不会覆盖；`GET /v1/meetings/{id}` 把它叠加为每句的 `review` 字段，模型的 `speaker` 原样保留以便对比。会议不存在或已删除返回 404。会议进行中改说话人，服务器本场的任务草稿立即改用人工说话人（优先于句内拆分）找负责人；仍然只是"建议"，不越过负责人验收开关。核对时界面会显示模型猜测，所以这些结果不是盲标，只能进开发集，不能当验收集。
 

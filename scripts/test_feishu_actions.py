@@ -375,6 +375,38 @@ def test_nothing_worth_sending():
     assert calls == [] and actions.state.get("meetings", "s3", "done")
 
 
+def test_minutes_view_for_the_app():
+    tmp = tempfile.mkdtemp()
+    analysis = dict(EMPTY, substantive=True, overview="定了样片",
+                    decisions=[{"text": "周五交样片", "ids": ["u0"]}, {"text": "编造的决定", "ids": ["u999"]}],
+                    actions=[{"owner": "洪玉麟", "task": "发样片", "due": "周五", "ids": ["u1", "u0"]}],
+                    open_questions=[{"question": "横屏分辨率多少", "ids": ["u2"]}])
+    resolver = FakeResolver({"analysis": analysis})
+    actions, meetings, calls = make(tmp, resolver)
+    started = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(seconds=5)).isoformat()
+    rows = [utter(0, "就周五交样片", "林春源", "decision"), utter(1, "我来发", "洪玉麟", "commitment"),
+            utter(2, "横屏分辨率是多少？", "林春源")] + [utter(i, f"第{i}句", "林春源") for i in range(3, 6)]
+    meetings.sync(dict(session_id="m1", started_at=started, time_zone="Asia/Shanghai", utterances=rows))
+    assert actions.minutes_view(meetings.load("m1")) == {"status": "pending", "reason": "in_progress"}
+    meetings.sync(dict(session_id="m1", started_at=started, ended_at=started, utterances=[]))
+    assert actions.minutes_view(meetings.load("m1")) == {"status": "pending", "reason": "writing"}
+    actions.after_meeting(meetings.load("m1"))
+    asked = resolver.asked
+    view = actions.minutes_view(meetings.load("m1"))
+    assert view["status"] == "ready" and view["doc_url"] == "https://x.feishu.cn/docx/doxDOC"
+    assert [d["text"] for d in view["minutes"]["decisions"]] == ["周五交样片"]  # the made-up item never reached storage
+    assert list(view["sources"]) == ["u0", "u1", "u2"] and view["sources"]["u1"]["speaker"] == "洪玉麟"
+    assert view["sources"]["u2"]["text"] == "横屏分辨率是多少？"
+    assert resolver.asked == asked  # reading the minutes never calls the model again
+
+    meetings.sync(dict(session_id="old", started_at="2020-01-01T00:00:00+00:00", ended_at="2020-01-01T01:00:00+00:00",
+                       time_zone="Asia/Shanghai", utterances=rows))
+    assert actions.minutes_view(meetings.load("old")) == {"status": "unavailable", "reason": "before_bot"}
+    meetings.sync(dict(session_id="bad", started_at=started, ended_at=started, time_zone="Asia/Shanghai", utterances=rows))
+    actions.state.put(6, "meetings", "bad", "failures")
+    assert actions.minutes_view(meetings.load("bad")) == {"status": "unavailable", "reason": "failed"}
+
+
 if __name__ == "__main__":
     for name, test in list(globals().items()):
         if name.startswith("test_"):

@@ -528,6 +528,26 @@ class FeishuActions:
         result["overview"] = clean(answer.get("overview"), 150) if result["substantive"] else ""
         return result
 
+    def minutes_view(self, row, now=None):
+        """The minutes as the app sees them: what the bot wrote, or why there is none yet. Never asks the model."""
+        sid = row["session_id"]
+        analysis = self.state.get("meetings", sid, "analysis")
+        if analysis:
+            ids = {u["id"]: u for u in row["utterances"]}
+            cited = [i for item in analysis.get("decisions", []) + analysis.get("actions", []) for i in item.get("ids", [])]
+            cited += [q["id"] for q in analysis.get("open_questions", []) if q.get("id")]
+            sources = {i: dict(text=ids[i]["text"], start_ms=ids[i]["start_ms"], end_ms=ids[i]["end_ms"], speaker=self.speaker(ids[i]))
+                       for i in dict.fromkeys(cited) if i in ids}  # a sentence deleted since is left out, not invented
+            return dict(status="ready", minutes=analysis, sources=sources, doc_url=self.state.get("meetings", sid, "doc_url"))
+        ended, _ = effective_end(row, now or now_utc())
+        if ended is None:
+            return dict(status="pending", reason="in_progress")
+        if ended <= parse_ts(self.state.get("since")):
+            return dict(status="unavailable", reason="before_bot")
+        if (self.state.get("meetings", sid, "failures") or 0) >= 6:
+            return dict(status="unavailable", reason="failed")
+        return dict(status="pending", reason="writing")
+
     @staticmethod
     def worth_sending(analysis):
         return analysis.get("substantive") and any(analysis.get(k) for k in ("decisions", "actions", "topics", "open_questions", "follow_ups"))

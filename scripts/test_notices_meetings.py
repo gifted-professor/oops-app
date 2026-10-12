@@ -135,6 +135,12 @@ class FeatureTest(unittest.TestCase):
                 request('/v1/meetings/sync', body); request('/v1/meetings/sync', body)
                 request('/v1/meetings/sync', dict(body, utterances=[utterance(tag='decision')]))
                 opened = request('/v1/meetings/s')
+                request('/v1/meetings/s/minutes', token=None, expected=401); request('/v1/meetings/s/minutes', token=invitation, expected=403)
+                self.assertEqual({'session_id':'s', 'status':'unavailable', 'reason':'bot_off'}, request('/v1/meetings/s/minutes'))
+                backend.feishu = types.SimpleNamespace(minutes_view=lambda row: {'status':'pending', 'reason':'in_progress', 'n':len(row['utterances'])})
+                self.assertEqual({'session_id':'s', 'status':'pending', 'reason':'in_progress', 'n':1}, request('/v1/meetings/s/minutes'))
+                del backend.feishu
+                request('/v1/meetings/nope/minutes', expected=404); request('/v1/meetings/..%2Fx/minutes', expected=400)
                 self.assertEqual(1, len(opened['digest']['decision'])); self.assertNotIn('pcm', opened['utterances'][0]); self.assertNotIn('speaker_preview', opened['utterances'][0])
                 self.assertEqual(1, request('/v1/meetings?limit=10')['count'])
                 self.assertEqual(1, len(request('/v1/meetings/search', {'query':'预算上限是多少'})['items']))
