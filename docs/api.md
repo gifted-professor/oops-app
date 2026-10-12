@@ -291,7 +291,7 @@ pyannote 3.0 局部编号不作为身份，不跨不连续发言共用声纹判�
 **AI 纪要（2026-10-11）**：`GET /v1/meetings/{id}/minutes` 返回机器人会后写的纪要，给 App 和网页原型用。只读已存结果，不会为此调用模型。`status`：
 - `ready`：`minutes` 为 `{version,substantive,overview,decisions:[{text,ids}],actions:[{owner,task,due,ids}],topics:[{topic,points}],open_questions:[{question,quote,id}],follow_ups:[{title,start,minutes,attendees,quote}]}`，每条都回指真实存在的句子；`sources` 是决定、待办、待查问题引用到的句子 `{id:{text,start_ms,end_ms,speaker}}`（说话人以人工核对为准，之后被删的句子不出现）；`doc_url` 是飞书纪要文档，没发文档时为 null。`substantive:false` 表示会议没有值得整理的内容（不足 5 句也是这样）。
 - `pending`：`reason` 为 `in_progress`（会议未结束）或 `writing`（已结束，机器人会在结束 90 秒后写，失败按 2、4、8… 分钟重试）。
-- `unavailable`：`reason` 为 `bot_off`（服务器未开 `OOPS_FEISHU_BOT=1`）、`before_bot`（会议在机器人启用前结束，不补写）或 `failed`（连续 6 次失败）。
+- `unavailable`：`reason` 为 `bot_off`（服务器未开 `OOPS_FEISHU_BOT=1`）、`before_bot`（会议在机器人启用前结束，不补写）、`no_end`（旧记录既没有结束时间也没有同步时间，判断不出已结束，机器人不会处理）或 `failed`（连续 6 次失败）。
 
 会议不存在或已删除返回 404，`id` 不合法返回 400；凭据要求同其他会议接口。
 

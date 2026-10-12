@@ -540,6 +540,8 @@ class FeishuActions:
                        for i in dict.fromkeys(cited) if i in ids}  # a sentence deleted since is left out, not invented
             return dict(status="ready", minutes=analysis, sources=sources, doc_url=self.state.get("meetings", sid, "doc_url"))
         ended, _ = effective_end(row, now or now_utc())
+        if ended is None and not row.get("last_sync_at"):
+            return dict(status="unavailable", reason="no_end")  # older records: no end and no sync time, so no end is ever inferred
         if ended is None:
             return dict(status="pending", reason="in_progress")
         if ended <= parse_ts(self.state.get("since")):

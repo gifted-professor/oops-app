@@ -405,6 +405,11 @@ def test_minutes_view_for_the_app():
     meetings.sync(dict(session_id="bad", started_at=started, ended_at=started, time_zone="Asia/Shanghai", utterances=rows))
     actions.state.put(6, "meetings", "bad", "failures")
     assert actions.minutes_view(meetings.load("bad")) == {"status": "unavailable", "reason": "failed"}
+    meetings.sync(dict(session_id="legacy", started_at=started, time_zone="Asia/Shanghai", utterances=rows))
+    legacy = read_json(meetings.path("legacy"))
+    legacy.pop("last_sync_at")  # written before the server kept a sync time: it will never be seen to end
+    meetings.write("legacy", legacy)
+    assert actions.minutes_view(meetings.load("legacy")) == {"status": "unavailable", "reason": "no_end"}
 
 
 if __name__ == "__main__":
